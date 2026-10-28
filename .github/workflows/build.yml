@@ -1,20 +1,22 @@
-name: Build Windows EXE
+name: Build Windows & macOS
 
 on:
   push:
     branches: [ "main", "master" ]
-    tags: [ "v*" ]        # Если отправишь тег (например v1.0), создастся Release!
-  workflow_dispatch:      # Позволяет запускать сборку вручную кнопкой на сайте GitHub
+    tags: [ "v*" ]        # Если отправишь тег (например v1.1.0), создастся Release с обоими файлами!
+  workflow_dispatch:      # Ручной запуск кнопкой на сайте GitHub
 
 permissions:
-  contents: write         # Разрешаем скрипту самому создавать Releases на GitHub
+  contents: write         # Разрешаем скрипту создавать Releases
 
 jobs:
-  build:
+  # ==========================================
+  # 1. СБОРКА ДЛЯ WINDOWS (.EXE)
+  # ==========================================
+  build_windows:
     runs-on: windows-latest
-
     steps:
-      - name: 1. Скачивание кода репозитория
+      - name: 1. Скачивание кода
         uses: actions/checkout@v4
 
       - name: 2. Установка Python 3.11
@@ -29,17 +31,55 @@ jobs:
 
       - name: 4. Компиляция в .EXE
         run: |
-          pyinstaller --noconfirm --onefile --windowed --collect-data imageio_ffmpeg --name "MediaDownloaderPro" ONE_FILE.py
+          pyinstaller --noconfirm --onefile --windowed --collect-data imageio_ffmpeg --name "MediaDownloaderPro-Windows" ONE_FILE.py
 
-      - name: 5. Сохранение .EXE во вкладку Actions (Artifacts)
+      - name: 5. Сохранение .EXE в Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: MediaDownloaderPro-Windows
-          path: dist/MediaDownloaderPro.exe
+          path: dist/MediaDownloaderPro-Windows.exe
 
-      - name: 6. Автоматическое создание Release (если запущен по тегу v*)
+      - name: 6. Добавление .EXE в Release (по тегу v*)
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/MediaDownloaderPro.exe
+          files: dist/MediaDownloaderPro-Windows.exe
+          generate_release_notes: true
+
+  # ==========================================
+  # 2. СБОРКА ДЛЯ MACOS (.APP в архиве .ZIP)
+  # ==========================================
+  build_macos:
+    runs-on: macos-latest
+    steps:
+      - name: 1. Скачивание кода
+        uses: actions/checkout@v4
+
+      - name: 2. Установка Python 3.11 (с поддержкой Tkinter на Mac)
+        run: |
+          brew install python@3.11 python-tk@3.11
+
+      - name: 3. Установка библиотек и FFmpeg
+        run: |
+          /opt/homebrew/opt/python@3.11/bin/python3.11 -m pip install --upgrade pip --break-system-packages
+          /opt/homebrew/opt/python@3.11/bin/python3.11 -m pip install pyinstaller yt-dlp imageio-ffmpeg --break-system-packages
+
+      - name: 4. Компиляция в .APP для macOS
+        run: |
+          /opt/homebrew/opt/python@3.11/bin/pyinstaller --noconfirm --windowed --collect-data imageio_ffmpeg --name "MediaDownloaderPro" ONE_FILE.py
+          cd dist
+          # На Mac приложение .app — это папка-пакет, поэтому архивируем её в .zip с сохранением системных прав:
+          ditto -c -k --sequesterRsrc --keepParent "MediaDownloaderPro.app" "MediaDownloaderPro-macOS.zip"
+
+      - name: 5. Сохранение .ZIP для Mac в Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: MediaDownloaderPro-macOS
+          path: dist/MediaDownloaderPro-macOS.zip
+
+      - name: 6. Добавление Mac-версии в Release (по тегу v*)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/MediaDownloaderPro-macOS.zip
           generate_release_notes: true

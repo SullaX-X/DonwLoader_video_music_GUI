@@ -46,6 +46,7 @@ jobs:
           files: dist/MediaDownloaderPro-Windows.exe
           generate_release_notes: true
 
+
   # ==========================================
   # 2. СБОРКА ДЛЯ MACOS (.APP в архиве .ZIP)
   # ==========================================
@@ -66,9 +67,8 @@ jobs:
 
       - name: 4. Компиляция в .APP для macOS
         run: |
-          /opt/homebrew/opt/python@3.11/bin/pyinstaller --noconfirm --windowed --collect-data imageio_ffmpeg --name "MediaDownloaderPro" ONE_FILE.py
+          /opt/homebrew/opt/python@3.11/bin/python3.11 -m PyInstaller --noconfirm --windowed --collect-data imageio_ffmpeg --name "MediaDownloaderPro" ONE_FILE.py
           cd dist
-          # На Mac приложение .app — это папка-пакет, поэтому архивируем её в .zip с сохранением системных прав:
           ditto -c -k --sequesterRsrc --keepParent "MediaDownloaderPro.app" "MediaDownloaderPro-macOS.zip"
 
       - name: 5. Сохранение .ZIP для Mac в Artifacts

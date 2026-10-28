@@ -1,0 +1,45 @@
+name: Build Windows EXE
+
+on:
+  push:
+    branches: [ "main", "master" ]
+    tags: [ "v*" ]        # Если отправишь тег (например v1.0), создастся Release!
+  workflow_dispatch:      # Позволяет запускать сборку вручную кнопкой на сайте GitHub
+
+permissions:
+  contents: write         # Разрешаем скрипту самому создавать Releases на GitHub
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: 1. Скачивание кода репозитория
+        uses: actions/checkout@v4
+
+      - name: 2. Установка Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 3. Установка библиотек и FFmpeg
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller yt-dlp imageio-ffmpeg
+
+      - name: 4. Компиляция в .EXE
+        run: |
+          pyinstaller --noconfirm --onefile --windowed --collect-data imageio_ffmpeg --name "MediaDownloaderPro" ONE_FILE.py
+
+      - name: 5. Сохранение .EXE во вкладку Actions (Artifacts)
+        uses: actions/upload-artifact@v4
+        with:
+          name: MediaDownloaderPro-Windows
+          path: dist/MediaDownloaderPro.exe
+
+      - name: 6. Автоматическое создание Release (если запущен по тегу v*)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/MediaDownloaderPro.exe
+          generate_release_notes: true
